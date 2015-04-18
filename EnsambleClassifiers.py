@@ -51,6 +51,35 @@ class LinearModelCombination(ClassifierMixin):
     def __str__(self):
         return ' '.join(["LM: ", str(self.model1), ' - ', str(self.model2), ' W: ', str(self.weight)])
 
+class LogisticModelCombination(ClassifierMixin):
+    """
+        Combine multiple models using a Logistic Regression
+    """
+    def __init__(self, classifiers, cv_folds=1, verbose=0):
+        self.classifiers = classifiers
+        self.logistic = LogisticRegressionCV(Cs=[10, 1, 0.1, 0.01, 0.001])
+
+    def fit(self, X, y):
+        sss= StratifiedShuffleSplit(y, n_iter=self.cv_folds)
+        for train_index, test_index in sss:
+            train_x = X[train_index]
+            train_y = y[train_index]
+
+            test_x = X[test_index]
+            test_y = y[test_index]
+
+            self._fit_logistic(train_x, train_y)
+
+    def _fit_logitstic(self, X, y):
+        preds = []
+        for clf in self.classifiers:
+            preds.append(clf.predict(X))
+
+        pred_X = np.concatenate(preds, axis=1)
+        print pred_X.shape
+
+        self.logistic.fit(pred_X,y)
+        print self.logistic._coef
 
 
 
@@ -152,9 +181,3 @@ class EnsambleClassifier(ClassifierMixin):
             model = scores[0][1]
             used_models.add(scores[0][2])
         print self.best_model
-
-
-
-
-
-
