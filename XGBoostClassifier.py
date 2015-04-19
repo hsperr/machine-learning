@@ -2,7 +2,7 @@ import sys
 import random
 
 if not 'xgboost' in sys.path:
-    sys.path.append('~/Applications/xgboost/wrapper/')
+    sys.path.append('/Users/henning.sperr/Applications/xgboost/wrapper/')
 
 import xgboost as xgb
 import numpy as np
