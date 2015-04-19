@@ -2,6 +2,7 @@ from itertools import combinations
 
 from sklearn.base import ClassifierMixin
 from sklearn.cross_validation import StratifiedShuffleSplit
+from sklearn.linear_model import LogisticRegressionCV
 from sklearn.metrics import log_loss
 
 import numpy as np
@@ -55,9 +56,11 @@ class LogisticModelCombination(ClassifierMixin):
     """
         Combine multiple models using a Logistic Regression
     """
-    def __init__(self, classifiers, cv_folds=1, verbose=0):
+    def __init__(self, classifiers, cv_folds=1, use_original_features=False, verbose=0):
         self.classifiers = classifiers
-        self.logistic = LogisticRegressionCV(Cs=[10, 1, 0.1, 0.01, 0.001])
+        self.cv_folds = cv_folds
+        self.use_original_features = use_original_features
+        self.logistic = LogisticRegressionCV(Cs=[10, 1, 0.1, 0.01, 0.001], refit=True)
 
     def fit(self, X, y):
         sss= StratifiedShuffleSplit(y, n_iter=self.cv_folds)
@@ -70,17 +73,30 @@ class LogisticModelCombination(ClassifierMixin):
 
             self._fit_logistic(train_x, train_y)
 
-    def _fit_logitstic(self, X, y):
+    def _fit_logistic(self, X, y):
         preds = []
         for clf in self.classifiers:
-            preds.append(clf.predict(X))
+            preds.append(clf.predict_proba(X))
 
-        pred_X = np.concatenate(preds, axis=1)
-        print pred_X.shape
+        pred_X = np.hstack(preds)
+
+        if self.use_original_features:
+            pred_X =  np.concatenate([X, pred_X], axis=1)
 
         self.logistic.fit(pred_X,y)
-        print self.logistic._coef
+        return self
 
+    def predict_proba(self, X):
+        preds = []
+        for i, clf in enumerate(self.classifiers):
+            class_proba = clf.predict_proba(X)
+            preds.append(class_proba)
+        pred_X = np.hstack(preds)
+
+        if self.use_original_features:
+            pred_X =  np.concatenate([X, pred_X], axis=1)
+
+        return self.logistic.predict_proba(pred_X)
 
 
 class EnsambleClassifier(ClassifierMixin):
