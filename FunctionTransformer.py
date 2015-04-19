@@ -29,7 +29,7 @@ class LogTransformer(FunctionTransformer):
         Logarithm Transformer that applies log(1+x) to the input
     """
     def __init__(self):
-        super(self.__class__, self).__init__(np.log1p)
+        super(self.__class__, self).__init__(lambda x: np.log1p(x.astype(np.float32)))
 
 class PowerTransformer(FunctionTransformer):
     """
