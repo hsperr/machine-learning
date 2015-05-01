@@ -1,3 +1,10 @@
+"""
+    A wrapper for different ways of combining models
+
+    Authors: Henning Sperr
+
+    License: BSD-3 clause
+"""
 from __future__ import print_function
 from itertools import combinations, izip
 import random
@@ -68,10 +75,12 @@ class BestEnsembleWeights(ClassifierMixin):
         classifiers : list of classifiers
         prefit : if True classifiers will be assumed to be fit already and the data passed to
                  fit method will be fully used for finding best weights
+        random_state : random seed
+        verbose : print verbose output
 
     """
 
-    def __init__(self, classifiers, prefit=False, random_state=None, verbose=0):
+    def __init__(self, classifiers, num_iter=50, prefit=False, random_state=None, verbose=0):
         self.classifiers = classifiers
         self.prefit = prefit
         if random_state is None:
@@ -79,6 +88,7 @@ class BestEnsembleWeights(ClassifierMixin):
         else:
             self.random_state = random_state
         self.verbose = verbose
+        self.num_iter = num_iter
 
     def fit(self, X, y):
         if self.prefit:
@@ -120,13 +130,32 @@ class BestEnsembleWeights(ClassifierMixin):
         # This sets the bounds on the weights, between 0 and 1
         bounds = tuple((0, 1) for w in starting_values)
 
-        # adding constraints  and a different solver as suggested by user 16universe
+        # adding constraints  and a different solver as suggested by user 16universes
         # https://kaggle2.blob.core.windows.net/forum-message-attachments/75655/2393/otto%20model%20weights.pdf?sv=2012-02-12&se=2015-05-03T21%3A22%3A17Z&sr=b&sp=r&sig=rkeA7EJC%2BiQ%2FJ%2BcMpcA4lYQLFh6ubNqs2XAkGtFsAv0%3D
         cons = ({'type': 'eq', 'fun': lambda w: 1 - sum(w)})
 
         res = minimize(log_loss_func, starting_values,
                        method='SLSQP', bounds=bounds, constraints=cons)
+
+        self.best_score = res['fun']
         self.best_weights = res['x']
+
+        for i in xrange(self.num_iter):
+            starting_values = np.random.uniform(0,1,size=len(predictions))
+
+            res = minimize(log_loss_func, starting_values,
+                           method='SLSQP', bounds=bounds, constraints=cons)
+            print('%s' % (res['fun']))
+
+            if res['fun']<self.best_score:
+                self.best_score = res['fun']
+                self.best_weights = res['x']
+
+                if self.verbose:
+                    print('')
+                    print('Update Ensamble Score: {best_score}'.format(best_score=res['fun']))
+                    print('Update Best Weights: {weights}'.format(weights=self.best_weights))
+
         if self.verbose:
             print('Ensamble Score: {best_score}'.format(best_score=res['fun']))
             print('Best Weights: {weights}'.format(weights=self.best_weights))
