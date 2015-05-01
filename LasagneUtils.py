@@ -94,13 +94,14 @@ class BestIterationSaver(object):
         self.best_weights = None
         self.delayed_start = delayed_start
         self.filename = name
+        self.verbose=verbose
 
     def __call__(self, nn, train_history):
         if len(train_history) < self.delayed_start:
             return
 
         if self.best_score is None or train_history[-1]['valid_loss'] < self.best_score:
-            if verbose:
+            if self.verbose:
                 print('Saving to {filename}'.format(filename=self.filename))
 
             self.best_score = train_history[-1]['valid_loss']
