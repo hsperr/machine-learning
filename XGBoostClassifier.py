@@ -1,9 +1,12 @@
-import sys
+"""
+    A wrapper around XGBoost trying to maintain the Scikit Learn API
+
+    Authors: Henning Sperr
+
+    License: BSD-3 clause
+"""
+
 import random
-
-if not 'xgboost' in sys.path:
-    sys.path.append('/Users/henning.sperr/Applications/xgboost/wrapper/')
-
 import xgboost as xgb
 import numpy as np
 
@@ -126,7 +129,6 @@ class XGBoostClassifier():
                 X = xgb.DMatrix(X.values, y.values, missing=np.nan)
                 return X
             return xgb.DMatrix(X, y, missing=np.nan)
-
 
     def predict(self, X):
         X = self.convert(X)
