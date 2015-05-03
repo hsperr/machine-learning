@@ -13,7 +13,7 @@ linear increase in momentum, it will save the best iterations after the first 10
 stop if either there was no improvement in the last 10 iterations or the train/test ratio is below 0.8:
 
 
-```
+```Python
 from lasagne.layers import DenseLayer, InputLayer, DropoutLayer
 from lasagne.nonlinearities import rectify, softmax, tanh, linear
 from lasagne.updates import nesterov_momentum, rmsprop, momentum
@@ -54,7 +54,6 @@ net =  NeuralNet(layers=layers,
 
 net_ppl2 = Pipeline([('LogTrans', LogTransformer()),('StandartScale', StandardScaler()), ('nn',net)])
 net_ppl2.fit(train_x.astype(np.float32), train_y.astype(np.int32))
-
 ```
 
 ### XGBoostClassifier
@@ -63,7 +62,7 @@ net_ppl2.fit(train_x.astype(np.float32), train_y.astype(np.int32))
 
 Example:
 
-```
+```Python
 from XGBoostClassifier import XGBoostClassifier
 xgb = XGBoostClassifier(watchlist=[(test_x, test_y)],
                         max_samples=0.9,
@@ -80,13 +79,14 @@ xgb.predict_proba(train_x)
 
 Example:
 
-```
+```Python
+from EnsembleClassifier import BestEnsambleWeights
 
 rfc = RandomForestClassifier(...)
 xgb = XGBoostClassifier(...)
 logreg = LogisticRegression(...)
 
-bew = EnsembleClassifiers.BestEnsembleWeights([rfc, xgb, logreg], prefit=False, random_state=1337, verbose=1)
+bew = BestEnsembleWeights([rfc, xgb, logreg], prefit=False, random_state=1337, verbose=1)
 bew.fit(train_y, train_x)
 bew.predict_proba(test_x)
 
