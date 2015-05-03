@@ -8,9 +8,12 @@
 
 import random
 import xgboost as xgb
+
+from sklearn.base import BaseEstimator, ClassifierMixin
+
 import numpy as np
 
-class XGBoostClassifier():
+class XGBoostClassifier(BaseEstimator, ClassifierMixin):
     """
         A simple wrapper around XGBoost
 
@@ -65,7 +68,6 @@ class XGBoostClassifier():
                  n_jobs=4,
                  n_iter=150):
 
-        self.booster = None
 
         if random_state is None:
             random_state = random.randint(0, 1000000)
@@ -100,21 +102,22 @@ class XGBoostClassifier():
         self.n_iter=n_iter
 
     def fit(self, X, y=None):
+        self.booster_ = None
         X=self.convert(X, y)
         if self.wl:
             wl = [(X, 'train')]
             for i, ent in enumerate(self.wl):
                 ent, lbl = ent
                 wl.append((self.convert(ent, lbl), 'test-'+str(i)))
-            self.booster = xgb.train(self.param, X, self.n_iter, wl)
+            self.booster_ = xgb.train(self.param, X, self.n_iter, wl)
         else:
-            self.booster = xgb.train(self.param, X, self.n_iter, [(X,'train')])
+            self.booster_ = xgb.train(self.param, X, self.n_iter, [(X,'train')])
 
+        return self
 
     def predict_proba(self, X):
         X = xgb.DMatrix(X)
-        return self.booster.predict(X)
-
+        return self.booster_.predict(X)
 
     def convert(self, X, y=None):
         if y is None:
@@ -132,5 +135,18 @@ class XGBoostClassifier():
 
     def predict(self, X):
         X = self.convert(X)
-        probs = self.booster.predict(X)
+        probs = self.booster_.predict(X)
         return np.argmax(probs, axis=1)
+
+    def get_params(self):
+        return {
+                'param':self.param,
+                'wl':self.wl,
+                'n_iter', self.n_iter
+                }
+
+    def set_params(self, **parameters):
+        for parameter, value in parameters.iteritems():
+            self.setattr(parameter, value)
+        return self
+
