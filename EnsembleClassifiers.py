@@ -20,11 +20,17 @@ from scipy.optimize import minimize
 
 
 class LinearModelCombination(ClassifierMixin):
+    """
+        Class that combines two models linearly.
 
-    def __init__(self, model1, model2, weight=None, metric=log_loss):
+        model1/2 : models to be combined
+        metric : metric to minimize
+    """
+
+    def __init__(self, model1, model2, metric=log_loss):
         self.model1 = model1
         self.model2 = model2
-        self.weight = weight
+        self.weight = None
         self.metric = metric
 
     def fit(self, X, y):
@@ -115,6 +121,12 @@ class BestEnsembleWeights(ClassifierMixin):
         for clf in self.classifiers:
             predictions.append(clf.predict_proba(X))
 
+        if self.verbose:
+            print('Individual LogLoss:')
+            for mn, pred in enumerate(predictions):
+                print("Model {model_number}:{log_loss}".format(model_number=mn,
+                                                               log_loss=log_loss(y, pred)))
+
         def log_loss_func(weights):
             ''' scipy minimize will pass the weights as a numpy array '''
             final_prediction = 0
@@ -145,7 +157,6 @@ class BestEnsembleWeights(ClassifierMixin):
 
             res = minimize(log_loss_func, starting_values,
                            method='SLSQP', bounds=bounds, constraints=cons)
-            print('%s' % (res['fun']))
 
             if res['fun']<self.best_score:
                 self.best_score = res['fun']
@@ -157,7 +168,7 @@ class BestEnsembleWeights(ClassifierMixin):
                     print('Update Best Weights: {weights}'.format(weights=self.best_weights))
 
         if self.verbose:
-            print('Ensamble Score: {best_score}'.format(best_score=res['fun']))
+            print('Ensamble Score: {best_score}'.format(best_score=self.best_score))
             print('Best Weights: {weights}'.format(weights=self.best_weights))
 
     def predict_proba(self, X):

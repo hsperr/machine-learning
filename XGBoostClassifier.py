@@ -74,6 +74,7 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
 
         param ={
           'silent':1,
+          'verbose':0,
           'use_buffer': True,
           'base_score': inital_bias,
           'nthread': n_jobs,
@@ -142,7 +143,7 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
         return {
                 'param':self.param,
                 'wl':self.wl,
-                'n_iter', self.n_iter
+                'n_iter': self.n_iter
                 }
 
     def set_params(self, **parameters):
