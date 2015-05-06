@@ -177,6 +177,9 @@ class BestEnsembleWeights(ClassifierMixin):
             prediction += weight * clf.predict_proba(X)
         return prediction
 
+    def predict(self, X):
+        return np.argmax(self.predict_proba(X), axis=1)
+
 
 class LogisticModelCombination(ClassifierMixin):
 

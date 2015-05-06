@@ -73,7 +73,7 @@ xgb.fit(train_x, train_y)
 xgb.predict_proba(train_x)
 ```
 
-### EnsambleClassifiers
+### EnsembleClassifiers
 
 - pass a list of classifiers and find the best weights for combining them
 
