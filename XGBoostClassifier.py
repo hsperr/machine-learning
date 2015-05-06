@@ -140,11 +140,28 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
         return np.argmax(probs, axis=1)
 
     def get_params(self, deep=False):
-        return {
-                'param':self.param,
-                'wl':self.wl,
-                'n_iter': self.n_iter
-                }
+        params = {
+                 'base_estimator':self.param['booster'],
+                 'objective':self.param['objective'],
+                 'metric':self.param['eval_metric'],
+                 'num_classes':self.param['num_class'],
+                 'learning_rate':self.param['eta'],
+                 'max_depth':self.param['max_depth'],
+                 'max_samples':self.param['subsample'],
+                 'max_features':self.param['colsample_bytree'],
+                 'max_delta_step':self.param['max_delta_step'],
+                 'min_child_weight':self.param['min_child_weight'],
+                 'min_loss_reduction':self.param['min_loss_reduction'],
+                 'l1_weight':self.param['alpha'],
+                 'l2_weight':self.param['lambda'],
+                 'l2_on_bias':self.param['lambda_bias'],
+                 'gamma':self.param['gamma'],
+                 'inital_bias':self.param['base_score'],
+                 'random_state':self.param['seed'],
+                 'watchlist':self.wl,
+                 'n_jobs':self.param['nthread'],
+                 'n_iter':self.n_iter}
+        return params
 
     def set_params(self, **parameters):
         for parameter, value in parameters.iteritems():
