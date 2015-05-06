@@ -139,7 +139,7 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
         probs = self.booster_.predict(X)
         return np.argmax(probs, axis=1)
 
-    def get_params(self):
+    def get_params(self, deep=False):
         return {
                 'param':self.param,
                 'wl':self.wl,
