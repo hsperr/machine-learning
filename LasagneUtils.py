@@ -7,9 +7,9 @@
 """
 
 from __future__ import print_function
-import numpy as np
-import abc
 
+from sklearn.metrics import log_loss
+import numpy as np
 
 class LinearAdjustVariable(object):
 
@@ -68,6 +68,29 @@ class EarlyStopper(object):
             nn.max_epochs = train_history[-1]['epoch']
 
 
+class CustomValidationSet(object):
+
+    """
+        Pass a custom validation set and a metric, standart is log_loss
+
+        validation_items: pass items in the form [('name1', [test_x, test_y]),
+                                                  ('name2',...)]]
+    """
+
+    def __init__(self, validation_items=None, metric=log_loss):
+        self.validation_items = validation_items
+        self.metric = metric
+
+    def __call__(self, nn, train_history):
+        if self.validation_items is None:
+            return
+
+        for name, data in self.validation_items:
+            data_x, data_y = data
+            print('Validating {name}: {score}'.format(
+                name=name, score=self.metric(data_y, nn.predict_proba(data_x))))
+
+
 class TrainRatioStopper(object):
 
     """
@@ -102,7 +125,7 @@ class BestIterationSaver(object):
         self.best_weights = None
         self.delayed_start = delayed_start
         self.filename = name
-        self.verbose=verbose
+        self.verbose = verbose
 
     def __call__(self, nn, train_history):
         if len(train_history) < self.delayed_start:
