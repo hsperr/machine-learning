@@ -86,18 +86,18 @@ class BestEnsembleWeights(ClassifierMixin):
 
     """
 
-    def __init__(self, classifiers, metric=log_loss, soft_ensamble=True, higher_is_better=False, prefit=False, random_state=None, verbose=0):
+    def __init__(self, classifiers, metric=log_loss, voting='soft', higher_is_better=False, prefit=False, num_iter=50, random_state=None, verbose=0):
         self.classifiers = classifiers
         self.prefit = prefit
         self.metric = metric
         self.higher_is_better=higher_is_better
-        self.soft_ensamble = soft_ensamble
+        self.num_iter = num_iter
+        self.voting = voting
         if random_state is None:
             self.random_state = random.randint(0, 10000)
         else:
             self.random_state = random_state
         self.verbose = verbose
-        self.num_iter = num_iter
 
     def fit(self, X, y):
         if self.prefit:
@@ -120,18 +120,18 @@ class BestEnsembleWeights(ClassifierMixin):
         self._find_best_weights(test_x, test_y)
 
     def _find_best_weights(self, X, y):
-        predictions = self._predict(X, np.ones(len(self.classifiers)))
+        predictions = self._predict_probas(X)
 
         if self.verbose:
             print('Individual Scores:')
             for mn, pred in enumerate(predictions):
                 print("Model {model_number}:{score}".format(model_number=mn,
-                                                               score=metric(y, pred)))
+                                                               score=self.metric(y, pred)))
         def loss_func(weights):
             ''' scipy minimize will pass the weights as a numpy array '''
-            predictions = self._predict(X, weights)
-            sign = (1,-1)self.higher_is_better
-            return sign*self.metric(y, predictions)
+            weighted_predictions = np.average(predictions, axis=0, weights=weights)
+            sign = (1,-1)[self.higher_is_better]
+            return sign*self.metric(y, weighted_predictions)
 
         # the algorithms need a starting value, right not we chose 0.5 for all weights
         # its better to choose many random starting points and run minimize a
@@ -144,16 +144,21 @@ class BestEnsembleWeights(ClassifierMixin):
         # https://kaggle2.blob.core.windows.net/forum-message-attachments/75655/2393/otto%20model%20weights.pdf?sv=2012-02-12&se=2015-05-03T21%3A22%3A17Z&sr=b&sp=r&sig=rkeA7EJC%2BiQ%2FJ%2BcMpcA4lYQLFh6ubNqs2XAkGtFsAv0%3D
         cons = ({'type': 'eq', 'fun': lambda w: 1 - sum(w)})
 
-        res = minimize(log_loss_func, starting_values,
+        res = minimize(loss_func, starting_values,
                        method='SLSQP', bounds=bounds, constraints=cons)
 
         self.best_score = res['fun']
         self.best_weights = res['x']
+        if self.verbose:
+            print('First Iteration:')
+            print('Update Ensamble Score: {best_score}'.format(best_score=res['fun']))
+            print('Update Best Weights: {weights}'.format(weights=self.best_weights))
+
 
         for i in xrange(self.num_iter):
             starting_values = np.random.uniform(0,1,size=len(predictions))
 
-            res = minimize(log_loss_func, starting_values,
+            res = minimize(loss_func, starting_values,
                            method='SLSQP', bounds=bounds, constraints=cons)
 
             if res['fun']<self.best_score:
@@ -166,12 +171,18 @@ class BestEnsembleWeights(ClassifierMixin):
                     print('Update Best Weights: {weights}'.format(weights=self.best_weights))
 
         if self.verbose:
+            print('Final Ensemble Score')
             print('Ensamble Score: {best_score}'.format(best_score=self.best_score))
             print('Best Weights: {weights}'.format(weights=self.best_weights))
 
     def predict_proba(self, X):
-        predictions = np.array([clf.predict_proba(X) for clf in self.classifiers])
-        return np.average(predictions, axis=0, weights=self.best_weights)
+        return self._predict_proba(X, self.best_weights)
+
+    def _predict_probas(self, X):
+        return np.asarray([clf.predict_proba(X) for clf in self.classifiers])
+
+    def _predict_proba(self, X, weights):
+        return np.average(self._predict_probas(X), axis=0, weights=weights)
 
     def _predict(self, X, weights):
         if self.verbose:
@@ -181,12 +192,14 @@ class BestEnsembleWeights(ClassifierMixin):
             predictions = np.array([clf.predict(X) for clf in self.classifiers])
             majority_vote = np.apply_along_axis(
                                   lambda x:
-                                  np.argmax(np.bincount(x, weights=self.best_weights)),
+                                  np.argmax(np.bincount(x, weights=weights)),
                                   axis=1,
                                   arr=predictions)
             return majority_vote
+        elif self.voting == 'decision':
+            pass
         else:
-            return np.argmax(self.predict_proba(X), axis=1)
+            return np.argmax(self._predict_proba(X, weights), axis=1)
 
     def predict(self, X):
         return self._predict(X, self.best_weight)
