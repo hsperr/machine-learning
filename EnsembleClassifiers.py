@@ -86,9 +86,12 @@ class BestEnsembleWeights(ClassifierMixin):
 
     """
 
-    def __init__(self, classifiers, num_iter=50, prefit=False, random_state=None, verbose=0):
+    def __init__(self, classifiers, metric=log_loss, soft_ensamble=True, higher_is_better=False, prefit=False, random_state=None, verbose=0):
         self.classifiers = classifiers
         self.prefit = prefit
+        self.metric = metric
+        self.higher_is_better=higher_is_better
+        self.soft_ensamble = soft_ensamble
         if random_state is None:
             self.random_state = random.randint(0, 10000)
         else:
@@ -117,23 +120,18 @@ class BestEnsembleWeights(ClassifierMixin):
         self._find_best_weights(test_x, test_y)
 
     def _find_best_weights(self, X, y):
-        predictions = []
-        for clf in self.classifiers:
-            predictions.append(clf.predict_proba(X))
+        predictions = self._predict(X, np.ones(len(self.classifiers)))
 
         if self.verbose:
-            print('Individual LogLoss:')
+            print('Individual Scores:')
             for mn, pred in enumerate(predictions):
-                print("Model {model_number}:{log_loss}".format(model_number=mn,
-                                                               log_loss=log_loss(y, pred)))
-
-        def log_loss_func(weights):
+                print("Model {model_number}:{score}".format(model_number=mn,
+                                                               score=metric(y, pred)))
+        def loss_func(weights):
             ''' scipy minimize will pass the weights as a numpy array '''
-            final_prediction = 0
-            for weight, prediction in izip(weights, predictions):
-                final_prediction += weight * prediction
-
-            return log_loss(y, final_prediction)
+            predictions = self._predict(X, weights)
+            sign = (1,-1)self.higher_is_better
+            return sign*self.metric(y, predictions)
 
         # the algorithms need a starting value, right not we chose 0.5 for all weights
         # its better to choose many random starting points and run minimize a
@@ -172,13 +170,26 @@ class BestEnsembleWeights(ClassifierMixin):
             print('Best Weights: {weights}'.format(weights=self.best_weights))
 
     def predict_proba(self, X):
-        prediction = 0
-        for weight, clf in izip(self.best_weights, self.classifiers):
-            prediction += weight * clf.predict_proba(X)
-        return prediction
+        predictions = np.array([clf.predict_proba(X) for clf in self.classifiers])
+        return np.average(predictions, axis=0, weights=self.best_weights)
+
+    def _predict(self, X, weights):
+        if self.verbose:
+            print('Num Classifiers:{num_class}'.format(num_class=len(self.classifiers)))
+
+        if self.voting == 'hard':
+            predictions = np.array([clf.predict(X) for clf in self.classifiers])
+            majority_vote = np.apply_along_axis(
+                                  lambda x:
+                                  np.argmax(np.bincount(x, weights=self.best_weights)),
+                                  axis=1,
+                                  arr=predictions)
+            return majority_vote
+        else:
+            return np.argmax(self.predict_proba(X), axis=1)
 
     def predict(self, X):
-        return np.argmax(self.predict_proba(X), axis=1)
+        return self._predict(X, self.best_weight)
 
 
 class LogisticModelCombination(ClassifierMixin):
